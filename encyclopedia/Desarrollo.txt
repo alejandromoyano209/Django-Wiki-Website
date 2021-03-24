@@ -1,0 +1,3 @@
+Debo usar una clase de formulario.
+Al campo de "content" le debo poner un widget para que aparezca como área de texto.
+Tengo que revisar sobre formularios "bound" y "unbound".

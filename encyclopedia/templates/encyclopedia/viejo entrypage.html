@@ -1,0 +1,15 @@
+{% block body %}
+    <h1> {{ titles }}</h1>
+
+    {% if entrie %}
+        <h5> {{ entrie }} </h5>
+        <form action="{% url 'wiki: entrypage' %}" method="post">
+            {% csrf_token %}
+            <input type="submit" name="editvientre" value="{{ titles }}">
+        </form>
+
+    {% else %}
+        <h2> NO </h2>
+    {% endif %}
+
+{% endblock %}

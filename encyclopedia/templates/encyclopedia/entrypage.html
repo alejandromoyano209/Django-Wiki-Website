@@ -1,0 +1,19 @@
+{% extends "encyclopedia/layout.html" %}
+
+{% block title %}
+    {{ titles }}
+{% endblock %}
+
+{% block body %}
+    {{ entrie|safe }}
+
+
+
+    <form action="{% url 'wiki:editpage' %}" method="post">
+   		{% csrf_token %}
+    	<input type="submit" name="editvientre" value="edit {{ titles }}">
+    </form> 
+
+
+{% endblock %}
+
