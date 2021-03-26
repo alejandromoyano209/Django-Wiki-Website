@@ -30,65 +30,66 @@ def index(request):
 
 # EntryPage 
 def entrypage(request, entry):
-	if request.method == "POST":
-		print("milanesa")
-		if util.get_entry(entry):
-			titles = str(entry)
-			entrie = str(util.get_entry(entry))
-			print(titles, entrie)	
-			return render(request, "encyclopedia/entrypage.html", {
-				titles: "entry", entrie: "sasa"
-				})
 
-		else:
-			raise Http404("No existe entrada")
+	# If entry exist render int
+	if util.get_entry(entry):
+		titles = str(entry)
+		entrie = str(util.get_entry(entry))
+		entrie = markdown2.markdown(entrie)
+		return render(request, "encyclopedia/entrypage.html", { "titles":titles, "entrie":entrie, "form": SearchForm()})
 
 
-
-	else:
-		print("olaf el vikingo")
-		if util.get_entry(entry):
-			titles = str(entry)
-			entrie = str(util.get_entry(entry))
-			entrie = markdown2.markdown(entrie)
-			print(titles)
-			return render(request, "encyclopedia/entrypage.html", { "titles":titles, "entrie":entrie, "form": SearchForm()})
-
-		raise Http404("Estamos en construcción :)")
+	# If entry not exist
+	raise Http404("Entry doesn't exist")
 
 
 
-#  Agregando 31/1/21
+#  Search for a entrie
 def search(request):
 	if request.method == "POST":
 		form = SearchForm(request.POST)
 		if form.is_valid():
 			busqueda = form.cleaned_data["search"]
 			busqueda = busqueda.casefold()
-			title = str(busqueda)
-			entry = util.get_entry(title)
+			userinput = str(busqueda)
+			entry = util.get_entry(userinput)
+			# If there are a perfect match
 			if entry is not None:
+				entrie = markdown2.markdown(entry)
 				return render(request, "encyclopedia/entrypage.html", {
-					"entry": entry, "title": title, "form": SearchForm()
+					"entrie": entrie, "titles": userinput, "form": SearchForm()
 					})
 
 			else:
-				abc = []
+				abc = []				
 				for entrada in util.list_entries():
 					absec = str(entrada).casefold()
-					if title in absec:
+					# If there are a list of results
+					if userinput in absec:
 						abc.append(entrada)
 						print(abc)
+						print(f"esta es la lista:{abc}")
 
-				print(f"esta es la lista:{abc}")
-				return render(request, "encyclopedia/search.html", {
-					"abc": abc
-					})
+				abclength = int(len(abc))
+				if len(abc) > 0:
+					return render(request, "encyclopedia/search.html", {
+						"abc": abc, "form": SearchForm()
+						})
+
+
+				# If there are no results
+				else:
+					message = "Results not found"
+					return render(request, "encyclopedia/search.html", {
+						"abc": abc, "message":message, "form": SearchForm()
+						})	
+
 
 
 		else:
+	 	   message = "Invalid form"
 	 	   return render(request, "encyclopedia/layout.html", {
-	    	"form": SearchForm()
+	    	"form": SearchForm(), "message":message	
 	    	})
 
 	else:
@@ -97,20 +98,23 @@ def search(request):
 	    	})
 
 
+# Create a new entrie
 def newpage(request):
 	if request.method == "POST":
 		form = newEntryTitle(request.POST)
 		if form.is_valid():
 			title = str(form.cleaned_data["title"])
-			print("title")
 			contenido = str(request.POST.get("contenido"))
-			print(contenido)
 			entry = util.get_entry(title)
+
+			# If entry already exists
 			if entry is not None:
-				raise Http404("La entrada que está intentando agregar ya existe.")
+				message = "Entry already exists"
+				return render(request, "encyclopedia/newpage.html", {
+					"newtitle": newEntryTitle(), "form": SearchForm(), "message" : message
+					})
 
-				#raise Http404("En construcción")
-
+			# If entry doesn't exist: save entry.
 			else:
 				util.save_entry(title, contenido)
 				contenido = markdown2.markdown(contenido)
@@ -131,113 +135,69 @@ def newpage(request):
 			})
 
 
-def editpage(request):
-	form = EditPage()
-	title = str(request.POST.get("editvientre"))
-	title = (title[5:])
-	contenido = util.get_entry(title)
-	print(f"eeste es el titulo : {title}")
 
-	if request.method == "POST":
-		if form.is_valid():
-			title = str(form.cleaned_data["title"])
-			print("tintin")
-			contenido = str(form.cleaned_data["title"])
-			util.save_entry(title, contenido)
-			contenido = markdown2.markdown(contenido)
-			return HttpResponseRedirect("encyclopedia/entrypage.html", {
-					"title": title, "entry": contenido
-					})
+# Edit Page
+def editpage(request, entry):
 
-		else:	
-			#title = str(request.POST.get("entry"))
-			contenido = util.get_entry(title)
-			print("neeeeerf")
-			print(contenido)
-
-			data = {'content': contenido}
-			form2 = EditPage(data)
-			print(form2.is_bound)
-
-			return render(request, "encyclopedia/editpage.html", {
-					"title": title, "editform": form2, "form": SearchForm()
-					})
-
-
-	# Parece que no se llegaría a esta view al menos que tipeemos directamente en la barra de direcciones.
-	else:
-		return render(request, "encyclopedia/index.html", {
-				"entries": util.list_entries(), "form":SearchForm()
-				})
-
-
-
-def savedpage(request):
 	if request.method == "POST":
 		form = EditPage(request.POST)
+		# If form is valid: save entry
 		if form.is_valid():
-			title = str(request.POST.get("viejachonga"))
-			title = (title[5:])
+			titulo = entry
 			contenido = form.cleaned_data["content"]
-			util.save_entry(title, contenido)
+			util.save_entry(titulo, contenido)
 			contenido = markdown2.markdown(contenido)
 			return render(request, "encyclopedia/entrypage.html", {
-				"titles": title, "entrie": contenido, "form":SearchForm()
+					"titles": titulo, "entrie": contenido, "form": SearchForm()
+					})
+
+		# If form isn't valid: render edit page
+		else:
+			entrie = util.get_entry(entry)
+			prepopulatedForm = {'content': entrie}
+			editform = EditPage(prepopulatedForm)
+			return render(request, "encyclopedia/editpage.html", {
+				"title":entry, "editform": editform, "form": SearchForm()
 				})
 
 
-		else:
-			raise Http404("estamos en construcción")
 
+	# If request method is get: render edit page
 	else:
-		raise Http404("En Construcción")
+		entrie = util.get_entry(entry)
+		prepopulatedForm = {'content': entrie}
+		editform = EditPage(prepopulatedForm)
+		return render(request, "encyclopedia/editpage.html", {
+			"title":entry, "editform": editform, "form": SearchForm()
+			})
 
+
+# Random page
 def randompage(request):
 
-	# La solicitud POST parece que no serviría en este caso
-	if request.method == "POST":
-		x = random.rand()
-		x = x * 100
-		allentries = util.list_entries()
-		print(f"x es {x} y todas las entradas son las siguientes: {allentries}")
-		raise Http404("Estamos construyendo randompage en POST method")
+	allentries = util.list_entries()
 
-	else:
-		# En la primera parte de este código describo una función random con defectos
-		x = random.rand()
-		x = int(x * 100)
-		allentries = util.list_entries()
-		sas = int(x / len(allentries))
-		print(f"x es {x} y sas es{sas} y todas las entradas son las siguientes: {allentries}")
-		print(f"esta es la entrada 0: {allentries[0]}")
+	contenedor = []
+	for i in range(len(allentries)):
+		contenedor.append(i)
 
-		# En esta segunda parte del código describo una función random más efectiva
-		contenedor = []
-		for i in range(len(allentries)):
-			contenedor.append(i)
+	contenedor2 = []
+	for m in range(len(allentries)):
+		m = 1/(len(allentries))
+		contenedor2.append(m)
 
-		contenedor2 = []
-		for m in range(len(allentries)):
-			m = 1/(len(allentries))
-			contenedor2.append(m)
 
-		toke = random.choice(contenedor, p=contenedor2 , size=(1))
-		toke = int(toke)
-		print(f"contenedor: {contenedor}")
-		print(f"contenedor2: {contenedor2}")
-		print(f"toke:{toke}")
-		title = allentries[toke]
-		entrie = markdown2.markdown(util.get_entry(title))
+	toke = random.choice(contenedor, p=contenedor2 , size=(1))
+	toke = int(toke)
 
-		return render(request, "encyclopedia/entrypage.html", {
-			"titles": title, "entrie": entrie, "form": SearchForm()
-			})
-		
-#		raise Http404("Estamos construyendo randompage en GET method de solicitud")
+	print(f"contenedor: {contenedor}")
+	print(f"contenedor2: {contenedor2}")
+	print(f"toke:{toke}")
 
-"""
-		title = "Agregar formula para obtener título"
-		return render(request, "encyclopedia/entripage.html" {
-			"titles": title, "entrie": util.get_entry(title), "form":SearchForm()
-			})
-"""
+	title = allentries[toke]
+	entrie = markdown2.markdown(util.get_entry(title))
+
+	return render(request, "encyclopedia/entrypage.html", {
+		"titles": title, "entrie": entrie, "form": SearchForm()
+		})
+	

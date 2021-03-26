@@ -7,6 +7,10 @@
 {% block body %}
 	<h1>New Page</h1>
 
+	{% if message %}
+		<p>{{ message }}</p>
+	{% endif %}
+
 	<form action="{% url 'wiki:newpage' %}" method="post">
 		{% csrf_token %}
 		{{ newtitle }}
